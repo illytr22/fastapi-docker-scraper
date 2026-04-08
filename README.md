@@ -23,7 +23,7 @@ A practical data pipeline that scrapes GitHub Trending repositories and stores t
 ### Prerequisites
 - Python 3.11+
 - MySQL Server
-- Docker (Optional)
+- Docker 
 
 ### Installation
 1. Clone the repository:
