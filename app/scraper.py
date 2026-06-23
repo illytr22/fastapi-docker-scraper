@@ -46,6 +46,6 @@ def scrape_github_and_store(db: Session):
             return [repo.title for repo in new_repos]
             
     except Exception as e:
-        db.rollback() # 出错时回滚，保证数据库数据一致性
+        db.rollback() # rollback when casue some mistake
         print(f"Scraper Error: {e}")
         return None

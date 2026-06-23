@@ -1,0 +1,70 @@
+name: Deploy FastAPI Scraper to AWS
+
+on:
+  push:
+    branches:
+      - main # 当你把代码推送到 main 分支时自动触发
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }} # GitHub 自动生成的临时 Token
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy-to-ec2:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Deploy to EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST_IP }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            # 登录到 GitHub 容器库
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # 停止并删除旧的爬虫容器（如果存在）
+            docker stop fastapi-scraper || true
+            docker rm fastapi-scraper || true
+            
+            # 拉取刚刚构建好的最新镜像
+            docker pull ghcr.io/${{ github.repository }}:main
+            
+            # 运行新容器，将 AWS 服务器的 8000 端口映射到容器内的 8000 端口
+            docker run -d --name fastapi-scraper -p 8000:8000 --restart unless-stopped ghcr.io/${{ github.repository }}:main
+            
+            # 清理服务器上残留的无用旧镜像，节约免费主机的磁盘空间
+            docker image prune -f
