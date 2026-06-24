@@ -10,11 +10,16 @@ DB_PASSWORD = "123456"
 DB_NAME = "scraper_db"   
 
 
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:3306/{DB_NAME}"
+#SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:3306/{DB_NAME}"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./scraper_data.db"
+
 
 # 3. create engine
 # check_same_thread=False 仅用于 SQLite，MySQL 不需要
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+#engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+)
 
 # 4. 创建会话工厂
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
